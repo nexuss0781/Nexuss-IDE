@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethco Editor - Login</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .login-container {
+            background-color: #252526;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+        }
+
+        .brand {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #007acc;
+            letter-spacing: 2px;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #aaaaaa;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #3e3e42;
+            background-color: #1e1e1e;
+            color: white;
+            font-size: 1rem;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: #007acc;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #005a9e;
+        }
+
+        .links {
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .links a {
+            color: #007acc;
+            text-decoration: none;
+        }
+
+        .alert {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        .alert.error { background-color: #d63031; color: white; }
+        .alert.success { background-color: #00b894; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="brand">ETHCO</div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if page == 'login' %}
+            <!-- LOGIN FORM -->
+            <form action="{{ url_for('login') }}" method="POST">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" required>
+                </div>
+                <button type="submit">Login</button>
+            </form>
+            <div class="links">
+                New to Ethco? <a href="{{ url_for('register') }}">Create Account</a>
+            </div>
+
+        {% else %}
+            <!-- REGISTER FORM -->
+            <form action="{{ url_for('register') }}" method="POST">
+                <div class="form-group">
+                    <label>Choose Username</label>
+                    <input type="text" name="username" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Choose Password</label>
+                    <input type="password" name="password" required>
+                </div>
+                <button type="submit">Register</button>
+            </form>
+            <div class="links">
+                Already have an account? <a href="{{ url_for('login') }}">Login here</a>
+            </div>
+        {% endif %}
+    </div>
+
+</body>
+</html>
