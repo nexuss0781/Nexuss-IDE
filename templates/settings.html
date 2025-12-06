@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethco - Settings</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .settings-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: #252526;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #3e3e42;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .header h2 { margin: 0; flex-grow: 1; }
+        
+        .back-btn {
+            text-decoration: none;
+            color: #007acc;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .back-btn:hover { color: #0098ff; }
+
+        .setting-group {
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+
+        .setting-title {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .setting-desc {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-bottom: 15px;
+        }
+
+        /* File Upload Styling */
+        .file-upload-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .btn {
+            background-color: #007acc;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background-color: #005a9e; }
+        
+        input[type="file"] {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        /* Flash Messages */
+        .alert {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .alert.success { background-color: #00b894; color: #fff; }
+        .alert.error { background-color: #d63031; color: #fff; }
+
+    </style>
+</head>
+<body>
+
+    <div class="settings-container">
+        <!-- Header -->
+        <div class="header">
+            <h2><i class="fa-solid fa-gear"></i> Settings</h2>
+            <a href="{{ url_for('ide') }}" class="back-btn">
+                <i class="fa-solid fa-arrow-left"></i> Back to Editor
+            </a>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Wallpaper Setting -->
+        <div class="setting-group">
+            <div class="setting-title">
+                <i class="fa-solid fa-image"></i> App Interface Wallpaper
+            </div>
+            <div class="setting-desc">
+                Upload a custom background image for the App Extensions screen.
+            </div>
+            
+            <form action="{{ url_for('upload_wallpaper') }}" method="POST" enctype="multipart/form-data">
+                <input type="file" name="wallpaper" accept="image/*" required>
+                <br>
+                <button type="submit" class="btn">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Upload Wallpaper
+                </button>
+            </form>
+        </div>
+
+        <!-- User Info (Static for now) -->
+        <div class="setting-group">
+            <div class="setting-title">
+                <i class="fa-solid fa-user"></i> Account
+            </div>
+            <div class="setting-desc">
+                You are logged in as <strong>{{ current_user.username }}</strong>.
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

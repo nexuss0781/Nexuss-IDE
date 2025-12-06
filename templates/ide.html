@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ethco Editor</title>
+    <!-- Dark Theme & Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Modern Icons (FontAwesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="brand">ETHCO</div>
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Flash Message Toast (Autosave & Feedback) -->
+    <div id="flash-toast"></div>
+
+    <!-- TOP BAR -->
+    <div id="top-bar">
+        <div class="left-actions">
+            <!-- Main Hamburger (Files) -->
+            <button id="btn-menu" class="icon-btn"><i class="fa-solid fa-bars"></i></button>
+            <span class="file-name" id="current-file-label">Untitled</span>
+        </div>
+        <div class="right-actions">
+            <!-- App Drawer Toggle -->
+            <button id="btn-apps" class="icon-btn"><i class="fa-solid fa-table-cells"></i></button>
+        </div>
+    </div>
+
+    <!-- MAIN LAYOUT -->
+    <div id="layout">
+        
+        <!-- LEFT SIDEBAR: File Tree -->
+        <div id="sidebar-left">
+            <div class="sidebar-header">
+                <span>EXPLORER</span>
+                <button id="btn-close-left" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- Open Folder Action -->
+            <div class="sidebar-action-area">
+                <button id="btn-open-folder" class="full-width-btn">
+                    <i class="fa-regular fa-folder-open"></i> Open Folder
+                </button>
+                <!-- Hidden input for directory selection -->
+                <input type="file" id="folder-input" webkitdirectory directory multiple style="display:none;">
+            </div>
+
+            <!-- The Tree -->
+            <div id="file-tree" class="tree-content">
+                <!-- JS Populates this -->
+            </div>
+
+            <!-- Bottom Sticky Footer -->
+            <div class="sidebar-footer">
+                <a href="{{ url_for('settings') }}" class="footer-item">
+                    <i class="fa-solid fa-gear"></i> Settings
+                </a>
+                <a href="{{ url_for('logout') }}" class="footer-item logout">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- CENTER: Monaco Editor -->
+        <div id="editor-wrapper">
+            <div id="editor-container"></div>
+            
+            <!-- Custom Selection Handles -->
+            <div id="handle-layer">
+                <div id="handle-start" class="selection-handle start"></div>
+                <div id="handle-end" class="selection-handle end"></div>
+            </div>
+
+            <!-- Mini Floating Toolbar -->
+            <div id="mini-toolbar">
+                <button id="btn-copy"><i class="fa-regular fa-copy"></i> Copy</button>
+                <div class="separator"></div>
+                <button id="btn-paste"><i class="fa-regular fa-paste"></i> Paste</button>
+                <div class="separator"></div>
+                <button id="btn-more"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDEBAR: App Extensions -->
+        <div id="sidebar-right">
+            <div class="sidebar-header">
+                <span>APPLICATIONS</span>
+                <button id="btn-close-right" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <!-- Grid Container for Apps -->
+            <div id="app-grid" class="grid-content">
+                <!-- JS Populates this -->
+            </div>
+        </div>
+    </div>
+
+    <!-- APP OVERLAY (Mini Browser) -->
+    <div id="app-overlay">
+        <div class="app-bar">
+            <button id="btn-close-app"><i class="fa-solid fa-arrow-left"></i> Back</button>
+            <span id="app-title">Application</span>
+        </div>
+        <div class="app-frame-container">
+            <iframe id="app-frame" src=""></iframe>
+        </div>
+    </div>
+
+    <!-- MONACO EDITOR (CDN METHOD) -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs/loader.js"></script>
+    <script>
+        // Configure the loader to fetch Monaco from the CDN
+        require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs' } });
+    </script>
+    
+    <!-- MAIN LOGIC -->
+    <script src="{{ url_for('static', filename='js/ide.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+</body>
+</html>
