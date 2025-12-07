@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #0098ff;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .add-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .add-form input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #3e3e42;
+            background-color: #252526;
+            color: white;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .add-form button {
+            padding: 10px 20px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .todo-list {
+            list-style: none;
+            padding: 0;
+        }
+        .todo-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #252526;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            border-left: 3px solid #007acc;
+        }
+        .todo-item span {
+            flex-grow: 1;
+        }
+        .delete-btn {
+            text-decoration: none;
+            color: #d63031;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .delete-btn:hover {
+            background-color: #d63031;
+            color: white;
+        }
+        .empty-state {
+            text-align: center;
+            color: #888;
+            margin-top: 40px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>My Tasks</h1>
+
+        <!-- Form to Add a New Todo -->
+        <form class="add-form" action="{{ url_for('todo_app.add_todo') }}" method="POST">
+            <input type="text" name="content" placeholder="What needs to be done?" required autocomplete="off">
+            <button type="submit">Add</button>
+        </form>
+
+        <!-- List of Existing Todos -->
+        <ul class="todo-list">
+            {% for todo in todos %}
+                <li class="todo-item">
+                    <span>{{ todo.content }}</span>
+                    <a href="{{ url_for('todo_app.delete_todo', todo_id=todo.id) }}" class="delete-btn">Delete</a>
+                </li>
+            {% endfor %}
+        </ul>
+
+        {% if not todos %}
+            <div class="empty-state">
+                <p>No tasks yet. Add one above!</p>
+            </div>
+        {% endif %}
+
+    </div>
+
+</body>
+</html>

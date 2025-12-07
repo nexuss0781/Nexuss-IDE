@@ -1,0 +1,7 @@
+{
+  "name": "Todo List",
+  "icon": "icon.png",
+  "entry_point": "main.py",
+  "base_route": "/todo/",
+  "init_function": "create_blueprint"
+}

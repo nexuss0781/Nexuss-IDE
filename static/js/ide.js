@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==========================================
     
     function showToast(msg, isPersistent) {
-        toast.innerHTML = msg; // Support HTML for icons
+        toast.innerHTML = msg;
         toast.classList.add('show');
         if (!isPersistent) {
             setTimeout(() => toast.classList.remove('show'), 3000);
@@ -51,39 +51,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // 3. SIDEBAR LOGIC
     // ==========================================
     
-    // Left (Files)
     btnMenu.addEventListener('click', () => {
         sidebarLeft.classList.add('open');
         sidebarRight.classList.remove('open');
     });
     btnCloseLeft.addEventListener('click', () => sidebarLeft.classList.remove('open'));
 
-    // Right (Apps) + Wallpaper Load
     btnApps.addEventListener('click', () => {
         sidebarRight.classList.add('open');
         sidebarLeft.classList.remove('open');
         
-        // Load Wallpaper with timestamp to prevent caching
         var timestamp = new Date().getTime();
         var bgUrl = "/static/images/app_wallpaper.jpg?t=" + timestamp;
         
-        // Check if image exists (visually handled by CSS fallback if 404, 
-        // but here we force the style)
         var img = new Image();
-        img.onload = function() {
-            sidebarRight.style.backgroundImage = "url('" + bgUrl + "')";
-        };
-        img.onerror = function() {
-            // If no custom wallpaper, CSS default applies
-            sidebarRight.style.backgroundImage = "none"; 
-        };
+        img.onload = () => { sidebarRight.style.backgroundImage = "url('" + bgUrl + "')"; };
+        img.onerror = () => { sidebarRight.style.backgroundImage = "none"; };
         img.src = bgUrl;
 
         fetchApps();
     });
     btnCloseRight.addEventListener('click', () => sidebarRight.classList.remove('open'));
 
-    // Close on Center Click
     document.getElementById('editor-wrapper').addEventListener('click', () => {
         sidebarLeft.classList.remove('open');
         sidebarRight.classList.remove('open');
@@ -93,9 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 4. FILE SYSTEM: OPEN FOLDER & UPLOAD
     // ==========================================
 
-    openFolderBtn.addEventListener('click', function() {
-        folderInput.click();
-    });
+    openFolderBtn.addEventListener('click', () => folderInput.click());
 
     folderInput.addEventListener('change', function(e) {
         var files = e.target.files;
@@ -103,35 +90,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
         showToast('<i class="fa-solid fa-spinner fa-spin"></i> Importing files...', true);
 
-        var uploadPromises = [];
-
-        // Iterate and upload files
-        for (var i = 0; i < files.length; i++) {
-            var file = files[i];
+        var uploadPromises = Array.from(files).map(file => {
             var formData = new FormData();
             formData.append('file', file);
-            // webkitRelativePath gives "Folder/Subfolder/file.txt"
-            formData.append('path', file.webkitRelativePath); 
+            formData.append('path', file.webkitRelativePath);
+            return fetch('/api/files/upload', { method: 'POST', body: formData });
+        });
 
-            var p = fetch('/api/files/upload', {
-                method: 'POST',
-                body: formData
-            });
-            uploadPromises.push(p);
-        }
-
-        // Wait for all uploads
         Promise.all(uploadPromises)
             .then(() => {
                 showToast('<i class="fa-solid fa-check"></i> Folder Imported');
-                // Hide the button area to simulate "Project Opened" state
                 openFolderArea.style.display = 'none';
-                fetchFileTree(); // Refresh tree
-                setTimeout(hideToast, 2000);
+                fetchFileTree();
             })
             .catch(err => {
                 showToast('<i class="fa-solid fa-triangle-exclamation"></i> Import Partial/Failed');
-                console.error(err);
                 fetchFileTree();
             });
     });
@@ -146,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 fileTreeContainer.innerHTML = '';
                 if(data.length === 0) {
-                    fileTreeContainer.innerHTML = '<div style="padding:20px; text-align:center; opacity:0.5; font-size:0.8rem;">Empty Workspace</div>';
+                    fileTreeContainer.innerHTML = '<div class="empty-workspace">Empty Workspace</div>';
                 } else {
                     renderTree(data, fileTreeContainer);
                 }
@@ -155,38 +128,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderTree(nodes, container) {
         var ul = document.createElement('ul');
-        ul.style.listStyle = 'none';
-        ul.style.paddingLeft = '10px';
-        ul.style.margin = '0';
+        ul.className = 'tree-level';
 
         nodes.forEach(node => {
             var li = document.createElement('li');
             var itemDiv = document.createElement('div');
-            itemDiv.className = 'tree-item ' + (node.type === 'folder' ? 'folder' : 'file');
+            itemDiv.className = 'tree-item ' + node.type;
             
-            var iconClass = node.type === 'folder' ? 'fa-folder' : 'fa-file-code';
-            if (node.name.endsWith('.html')) iconClass = 'fa-brands fa-html5';
-            if (node.name.endsWith('.js')) iconClass = 'fa-brands fa-js';
-            if (node.name.endsWith('.css')) iconClass = 'fa-brands fa-css3-alt';
-            if (node.name.endsWith('.py')) iconClass = 'fa-brands fa-python';
+            var iconClass = {
+                '.html': 'fa-brands fa-html5',
+                '.js': 'fa-brands fa-js',
+                '.css': 'fa-brands fa-css3-alt',
+                '.py': 'fa-brands fa-python',
+                '.json': 'fa-solid fa-gear',
+                'folder': 'fa-folder'
+            };
+            var ext = Object.keys(iconClass).find(ext => node.name.endsWith(ext)) || 'fa-file-code';
+            var icon = node.type === 'folder' ? iconClass.folder : ext;
+            
+            itemDiv.innerHTML = `<i class="fa-regular ${icon}"></i> <span>${node.name}</span>`;
 
-            itemDiv.innerHTML = `<i class="fa-regular ${iconClass}"></i> <span>${node.name}</span>`;
-
-            itemDiv.addEventListener('click', function(e) {
+            itemDiv.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (node.type === 'folder') {
-                    // Toggle
-                    var childrenUl = li.querySelector('ul');
+                    var childrenUl = li.querySelector('.tree-level');
                     if (childrenUl) {
                         var isHidden = childrenUl.style.display === 'none';
                         childrenUl.style.display = isHidden ? 'block' : 'none';
-                        // Toggle Folder Icon
-                        var icon = itemDiv.querySelector('i');
-                        icon.className = isHidden ? 'fa-regular fa-folder-open' : 'fa-regular fa-folder';
+                        itemDiv.querySelector('i').className = `fa-regular ${isHidden ? 'fa-folder-open' : 'fa-folder'}`;
                     }
                 } else {
                     loadFile(node.path, node.name);
-                    // Mobile UX: Close sidebar
                     if (window.innerWidth < 768) sidebarLeft.classList.remove('open');
                 }
             });
@@ -194,11 +166,9 @@ document.addEventListener('DOMContentLoaded', function() {
             li.appendChild(itemDiv);
             if (node.children) {
                 renderTree(node.children, li);
-                // Default collapse subfolders? No, keep open for now or hidden via CSS
             }
             ul.appendChild(li);
         });
-
         container.appendChild(ul);
     }
 
@@ -212,16 +182,12 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.error) {
                 showToast('Error: ' + data.error);
-            } else {
-                if (window.editorInstance) {
-                    window.editorInstance.setValue(data.content);
-                    window.editorInstance.setScrollTop(0);
-                    currentFilePath = path;
-                    labelFileName.textContent = name;
-                    
-                    // Attach Autosave listener if not already
-                    attachAutosave();
-                }
+            } else if (window.editorInstance) {
+                window.editorInstance.setValue(data.content);
+                window.editorInstance.setScrollTop(0);
+                currentFilePath = path;
+                labelFileName.textContent = name;
+                attachAutosave();
             }
         });
     }
@@ -234,23 +200,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isAutosaveAttached || !window.editorInstance) return;
         
         window.editorInstance.onDidChangeModelContent(() => {
-            // User is typing...
-            // 1. Clear existing timer
-            if (saveTimer) clearTimeout(saveTimer);
-            
-            // 2. Show "Typing/Saving" status immediately? Or wait?
-            // Let's show nothing while typing, but trigger save after pause.
-            
-            // 3. Set new timer (Debounce 2 seconds)
+            clearTimeout(saveTimer);
             saveTimer = setTimeout(performAutosave, 2000);
         });
-
         isAutosaveAttached = true;
     }
 
     function performAutosave() {
         if (!currentFilePath) return;
-
         showToast('<i class="fa-solid fa-floppy-disk"></i> Saving...', true);
         var content = window.editorInstance.getValue();
 
@@ -262,17 +219,15 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                showToast('<i class="fa-solid fa-check"></i> All changes saved');
-                setTimeout(hideToast, 2000);
+                showToast('<i class="fa-solid fa-check"></i> Saved');
             } else {
                 showToast('<i class="fa-solid fa-circle-xmark"></i> Save Failed');
             }
-        })
-        .catch(err => showToast('Network Error'));
+        });
     }
 
     // ==========================================
-    // 7. APP EXTENSIONS
+    // 7. APP EXTENSIONS (BUG FIX)
     // ==========================================
 
     function fetchApps() {
@@ -287,32 +242,39 @@ document.addEventListener('DOMContentLoaded', function() {
             var div = document.createElement('div');
             div.className = 'app-icon';
             
-            var imgSrc = (app.icon === 'default') 
-                ? 'https://ui-avatars.com/api/?name=' + app.name + '&background=007acc&color=fff' 
-                : '/extension/' + app.name + '/' + app.icon;
+            // **BUG FIX**: Construct icon URL reliably using folder_name.
+            var imgSrc;
+            if (app.icon_filename === 'default') {
+                // Use a placeholder generator if no icon is specified
+                imgSrc = `https://ui-avatars.com/api/?name=${app.display_name.charAt(0)}&background=007acc&color=fff`;
+            } else {
+                // Use the asset serving route for ALL icons.
+                imgSrc = `/extension/${app.folder_name}/${app.icon_filename}`;
+            }
 
             div.innerHTML = `
-                <img src="${imgSrc}" class="app-icon-img">
-                <span class="app-name">${app.name}</span>
+                <img src="${imgSrc}" class="app-icon-img" alt="${app.display_name}">
+                <span class="app-name">${app.display_name}</span>
             `;
 
             div.addEventListener('click', () => {
-                openApp(app.name);
+                // **BUG FIX**: Use the exact launch_url provided by the API.
+                openApp(app.display_name, app.launch_url);
                 sidebarRight.classList.remove('open');
             });
             appGridContainer.appendChild(div);
         });
     }
 
-    function openApp(name) {
-        appTitle.textContent = name;
-        appFrame.src = '/extension/' + name + '/';
+    function openApp(appName, launchUrl) {
+        appTitle.textContent = appName;
+        appFrame.src = launchUrl; // Directly use the URL from the backend
         appOverlay.classList.add('active');
     }
 
     btnCloseApp.addEventListener('click', () => {
         appOverlay.classList.remove('active');
-        appFrame.src = '';
+        appFrame.src = 'about:blank'; // Clear source to stop scripts and free memory
     });
 
     // ==========================================
