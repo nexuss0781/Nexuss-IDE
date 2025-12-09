@@ -4,3 +4,11 @@ __pycache__/
 venv/
 workspace/
 
+# Ignore instance folder for database files
+instance/
+
+# Ignore log files
+*.log
+
+# Ignore local development scripts
+create_user.py
