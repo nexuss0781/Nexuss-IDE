@@ -20,8 +20,6 @@ todo_app_blueprint = Blueprint(
 # ==========================================
 # 2. EXTENSION ROUTES
 # ==========================================
-# These routes will work because by the time a user accesses them,
-# the 'Todo' variable will have been replaced with the real database model.
 
 @todo_app_blueprint.route('/')
 @login_required
@@ -58,18 +56,18 @@ def delete_todo(todo_id):
 # 3. INITIALIZATION FUNCTION (THE FIX)
 # ==========================================
 
-def create_blueprint(flask_app, database):
+def create_blueprint(flask_app, database, socketio_instance):
     """
     This is the entry point called by the main app.py.
-    It receives the live database object and initializes the extension.
+    **BUG FIX**: It now accepts the `socketio_instance` argument, even if unused,
+    to comply with the updated Extension SDK.
     """
     global db, Todo
     db = database # 1. Receive the real database object.
 
-    # 2. **THE FIX**: Define the database model class *inside* this function.
-    # Now, `db.Model` is the real thing, not None.
+    # 2. Define the database model class *inside* this function.
     class TodoModel(db.Model):
-        __tablename__ = 'todo' # Best practice to explicitly name the table
+        __tablename__ = 'todo' 
         id = db.Column(db.Integer, primary_key=True)
         content = db.Column(db.String(200), nullable=False)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -78,7 +76,7 @@ def create_blueprint(flask_app, database):
     # 3. Assign the fully-initialized model to the global placeholder.
     Todo = TodoModel
 
-    print("[+] TodoApp Extension: Database model successfully initialized.")
+    print("[+] TodoApp Extension: Model initialized and ready.")
 
     # 4. Return the configured blueprint to the main app.
     return todo_app_blueprint

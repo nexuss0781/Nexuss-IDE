@@ -6,7 +6,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from flask_migrate import Migrate # Import Flask-Migrate
+from flask_migrate import Migrate
+from flask_socketio import SocketIO
 
 # ==========================================
 # 1. INITIAL SETUP
@@ -22,18 +23,17 @@ WORKSPACE_DIR = os.path.join(BASE_DIR, 'workspace')
 EXTENSIONS_DIR = os.path.join(BASE_DIR, 'extensions')
 STATIC_IMAGES_DIR = os.path.join(BASE_DIR, 'static', 'images')
 
-# Create directories if they don't exist
+# Create directories
 for d in [WORKSPACE_DIR, EXTENSIONS_DIR, STATIC_IMAGES_DIR]:
     os.makedirs(d, exist_ok=True)
 
-# Initialize Database & Login Manager
+# Initialize Database, Login Manager, and SocketIO
 db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-
-# Initialize Flask-Migrate
 migrate = Migrate(app, db)
+socketio = SocketIO(app)
 
 # ==========================================
 # 2. DATABASE MODELS & AUTH
@@ -45,7 +45,10 @@ class User(UserMixin, db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    """
+    **CODE QUALITY FIX**: Replaced legacy `User.query.get()` with `db.session.get()`.
+    """
+    return db.session.get(User, int(user_id))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -158,7 +161,6 @@ def load_extensions(flask_app, database):
     for item_name in os.listdir(EXTENSIONS_DIR):
         ext_path = os.path.join(EXTENSIONS_DIR, item_name)
         manifest_path = os.path.join(ext_path, 'manifest.json')
-        
         if os.path.isdir(ext_path) and os.path.exists(manifest_path):
             try:
                 with open(manifest_path, 'r') as f: manifest = json.load(f)
@@ -174,7 +176,7 @@ def load_extensions(flask_app, database):
                 init_function = getattr(ext_module, init_function_name, None)
                 if not init_function: continue
                 
-                blueprint = init_function(flask_app, database)
+                blueprint = init_function(flask_app, database, socketio)
                 if blueprint:
                     flask_app.register_blueprint(blueprint)
                     print(f"[+] Successfully loaded Python extension: '{manifest.get('name', item_name)}'")
@@ -215,12 +217,10 @@ def serve_extension_asset(app_name, filename):
 # 6. APP INITIALIZATION
 # ==========================================
 
-# Load extensions so their models are registered and discoverable by Flask-Migrate
-# This must be done at the top level, not inside the __main__ block.
+# Load extensions so their models are registered before the app runs
 with app.app_context():
     load_extensions(app, db)
 
 if __name__ == '__main__':
-    # The main run block is now clean and only runs the app.
-    # Database creation/migration is handled by the `flask db` commands.
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    print("--- Starting Nexuss-IDE Server with SocketIO ---")
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
