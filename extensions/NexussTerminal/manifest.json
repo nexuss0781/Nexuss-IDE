@@ -1,0 +1,7 @@
+{
+  "name": "Nexuss Terminal",
+  "icon": "icon.jpg",
+  "entry_point": "main.py",
+  "base_route": "/terminal/",
+  "init_function": "create_blueprint"
+}

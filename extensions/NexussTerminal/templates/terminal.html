@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexuss Terminal</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #e0e0e0;
+            --border-color: #333;
+            --button-bg: #2a2d2e;
+            --accent-blue: #0098ff;
+            --accent-green: #2ecc71;
+            --accent-red: #e74c3c;
+            --command-color: #00c2a3; /* A distinct color for user commands */
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+        }
+        /* --- State 1: Connecting Overlay (Unchanged) --- */
+        #connecting-overlay {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.5s ease-in-out;
+        }
+        #countdown-timer { font-size: 2.5rem; font-weight: bold; color: #fff; }
+        #status-bar { display: flex; align-items: center; gap: 10px; margin-top: 10px; margin-bottom: 20px; }
+        #status-light { width: 15px; height: 15px; border-radius: 50%; background-color: var(--border-color); transition: background-color 0.3s; }
+        #status-light.status-connecting { background-color: var(--accent-blue); animation: pulse 1.5s infinite; }
+        #status-light.status-success { background-color: var(--accent-green); }
+        #status-light.status-failed { background-color: var(--accent-red); }
+        #status-message { font-style: italic; color: #aaa; }
+        #embedded-site-container { width: 90%; height: 60%; max-width: 800px; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
+        #embedded-site-iframe { width: 100%; height: 100%; border: none; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 152, 255, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 152, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 152, 255, 0); }
+        }
+
+        /* --- State 2: Main Terminal (Rebuilt) --- */
+        #main-terminal {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.5s ease-in-out;
+        }
+        /* The Big Displayer */
+        #terminal-output-container {
+            flex: 1; /* CRITICAL: This makes the box expand to fill space */
+            padding: 10px;
+            overflow-y: auto;
+            background-color: #0d0d0d; /* Slightly darker than main bg */
+        }
+        #output-box {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.9rem;
+        }
+        /* Style for user's echoed commands */
+        .command-echo {
+            color: var(--command-color);
+            font-weight: bold;
+        }
+        /* Special Keys Area */
+        #special-keys { display: flex; justify-content: center; gap: 5px; padding: 8px 10px; border-top: 1px solid var(--border-color); }
+        .key-btn { background-color: var(--button-bg); border: 1px solid var(--border-color); color: var(--text-color); padding: 8px 12px; border-radius: 4px; font-size: 0.9rem; cursor: pointer; min-width: 40px; text-align: center; }
+        .key-btn:active { background-color: var(--accent-blue); }
+        /* Telegram-style Input Area */
+        #input-area {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            border-top: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+        }
+        #input-box {
+            flex-grow: 1;
+            background-color: var(--button-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px 15px;
+            border-radius: 20px; /* Rounded for messenger look */
+            font-family: inherit;
+            font-size: 1rem;
+            outline: none;
+        }
+        #input-box:focus { border-color: var(--accent-blue); }
+        #send-button {
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            width: 40px; /* Circle shape */
+            height: 40px;
+            border-radius: 50%;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 40px; /* Center the icon */
+            text-align: center;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- State 1: Connecting (Visible by Default) -->
+    <div id="connecting-overlay">
+        <div id="countdown-timer">03:00</div>
+        <div id="status-bar">
+            <div id="status-light" class="status-connecting"></div>
+            <div id="status-message">Initializing session...</div>
+        </div>
+        <div id="embedded-site-container">
+            <iframe id="embedded-site-iframe" src="https://bash-terminalbackend.onrender.com"></iframe>
+        </div>
+    </div>
+
+    <!-- State 2: Connected (Hidden by Default) -->
+    <div id="main-terminal" style="display: none; opacity: 0;">
+        <div id="terminal-output-container">
+            <div id="output-box"></div>
+        </div>
+        <div id="special-keys">
+            <button class="key-btn" data-key="CTRL">CTRL</button>
+            <button class="key-btn" data-key="ARROW_UP">↑</button>
+            <button class="key-btn" data-key="ARROW_DOWN">↓</button>
+            <button class="key-btn" data-key="ARROW_LEFT">←</button>
+            <button class="key-btn" data-key="ARROW_RIGHT">→</button>
+            <button class="key-btn" data-key="HOME">Home</button>
+            <button class="key-btn" data-key="END">End</button>
+        </div>
+        <div id="input-area">
+            <input type="text" id="input-box" placeholder="Enter command..." autocomplete="off" spellcheck="false" disabled>
+            <button id="send-button" disabled title="Send">➤</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- UI Elements ---
+            const connectingOverlay = document.getElementById('connecting-overlay');
+            const mainTerminal = document.getElementById('main-terminal');
+            const countdownTimerEl = document.getElementById('countdown-timer');
+            const statusLightEl = document.getElementById('status-light');
+            const statusMessageEl = document.getElementById('status-message');
+            const outputBox = document.getElementById('output-box');
+            const outputContainer = document.getElementById('terminal-output-container');
+            const inputBox = document.getElementById('input-box');
+            const sendButton = document.getElementById('send-button');
+            const specialKeysContainer = document.getElementById('special-keys');
+            
+            const namespace = '{{ socketio_namespace }}';
+            const socket = io(namespace);
+            let countdownInterval;
+
+            function startCountdown() {
+                let timeLeft = 180;
+                countdownInterval = setInterval(() => {
+                    timeLeft--;
+                    const minutes = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+                    const seconds = String(timeLeft % 60).padStart(2, '0');
+                    countdownTimerEl.textContent = `${minutes}:${seconds}`;
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        showFailureState('Connection timed out. The service did not respond.');
+                    }
+                }, 1000);
+            }
+
+            function showFailureState(message) {
+                clearInterval(countdownInterval);
+                statusLightEl.className = 'status-light status-failed';
+                statusMessageEl.textContent = message;
+                document.getElementById('embedded-site-container').style.display = 'none';
+            }
+
+            function showSuccessState() {
+                clearInterval(countdownInterval);
+                statusLightEl.className = 'status-light status-success';
+                connectingOverlay.style.opacity = '0';
+                
+                setTimeout(() => {
+                    connectingOverlay.style.display = 'none';
+                    mainTerminal.style.display = 'flex';
+                    setTimeout(() => {
+                        mainTerminal.style.opacity = '1';
+                        inputBox.disabled = false;
+                        sendButton.disabled = false;
+                        inputBox.focus();
+                    }, 50);
+                }, 500);
+            }
+
+            socket.on('connect', startCountdown);
+            socket.on('disconnect', () => showFailureState('Disconnected from server.'));
+            socket.on('terminal_error', (errorMsg) => showFailureState(`Error: ${errorMsg}`));
+            
+            socket.on('status_update', (data) => {
+                statusMessageEl.textContent = data;
+                if (data.includes('successful')) {
+                    showSuccessState();
+                }
+            });
+
+            socket.on('terminal_output', (data) => {
+                const textNode = document.createTextNode(data);
+                outputBox.appendChild(textNode);
+                outputContainer.scrollTop = outputContainer.scrollHeight;
+            });
+            
+            // --- **COMMAND ECHOING FIX** ---
+            function sendInput() {
+                const command = inputBox.value;
+                if (!command) return;
+
+                // 1. Echo the command to the user's screen immediately
+                const echo = document.createElement('div');
+                echo.className = 'command-echo';
+                echo.textContent = `> ${command}`;
+                outputBox.appendChild(echo);
+                outputContainer.scrollTop = outputContainer.scrollHeight; // Scroll down
+
+                // 2. Send the command to the server
+                socket.emit('terminal_input', command + '\\r\\n');
+                
+                // 3. Clear the input box
+                inputBox.value = '';
+            }
+            sendButton.addEventListener('click', sendInput);
+            inputBox.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendInput(); });
+
+            let ctrlPressed = false;
+            const keyMap = { 'ARROW_UP': '\\x1b[A', 'ARROW_DOWN': '\\x1b[B', 'ARROW_RIGHT': '\\x1b[C', 'ARROW_LEFT': '\\x1b[D', 'HOME': '\\x1b[H', 'END': '\\x1b[F' };
+            specialKeysContainer.addEventListener('click', (event) => {
+                const target = event.target.closest('.key-btn');
+                if (!target) return;
+                const key = target.dataset.key;
+                if (key === 'CTRL') {
+                    ctrlPressed = !ctrlPressed;
+                    target.style.backgroundColor = ctrlPressed ? 'var(--accent-blue)' : 'var(--button-bg)';
+                } else if (keyMap[key]) {
+                    let sequence = keyMap[key];
+                    if (ctrlPressed) {
+                        sequence = keyMap[key].replace('[', '[1;5');
+                        ctrlPressed = false; document.querySelector('[data-key="CTRL"]').style.backgroundColor = 'var(--button-bg)';
+                    }
+                    socket.emit('terminal_input', sequence);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
