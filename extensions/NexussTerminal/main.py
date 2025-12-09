@@ -100,9 +100,11 @@ class TerminalNamespace(Namespace):
         sid = request.sid
         print(f"Browser disconnected from Terminal Namespace: {sid}")
         if sid in connections:
-            asyncio.run(connections[sid].close())
+            # **BUG FIX**: Don't use asyncio.run in a running loop.
+            # Schedule the close operation on the existing loop.
+            asyncio.create_task(connections[sid].close())
             del connections[sid]
-            print(f"Forcibly closed external connection for SID: {sid}")
+            print(f"Scheduled closure of external connection for SID: {sid}")
 
     def on_terminal_input(self, data):
         """Receives data from the user and forwards it to the external terminal."""

@@ -34,6 +34,12 @@
             width: 100%;
             height: 100%;
             transition: opacity 0.5s ease-in-out;
+            /* **UI FIX**: Make this a proper overlay */
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: var(--bg-color); /* Match the body background */
+            z-index: 1000;
         }
         #countdown-timer { font-size: 2.5rem; font-weight: bold; color: #fff; }
         #status-bar { display: flex; align-items: center; gap: 10px; margin-top: 10px; margin-bottom: 20px; }
@@ -84,6 +90,7 @@
             display: flex;
             gap: 10px;
             padding: 10px;
+            /*This border is now between the output and the input box*/
             border-top: 1px solid var(--border-color);
             background-color: var(--bg-color);
         }
@@ -129,10 +136,14 @@
         </div>
     </div>
 
-    <!-- State 2: Connected (Hidden by Default) -->
-    <div id="main-terminal" style="display: none; opacity: 0;">
+    <!-- State 2: Connected (Now visible by default, but under the overlay) -->
+    <div id="main-terminal">
         <div id="terminal-output-container">
             <div id="output-box"></div>
+        </div>
+        <div id="input-area">
+            <input type="text" id="input-box" placeholder="Enter command..." autocomplete="off" spellcheck="false" disabled>
+            <button id="send-button" disabled title="Send">➤</button>
         </div>
         <div id="special-keys">
             <button class="key-btn" data-key="CTRL">CTRL</button>
@@ -142,10 +153,6 @@
             <button class="key-btn" data-key="ARROW_RIGHT">→</button>
             <button class="key-btn" data-key="HOME">Home</button>
             <button class="key-btn" data-key="END">End</button>
-        </div>
-        <div id="input-area">
-            <input type="text" id="input-box" placeholder="Enter command..." autocomplete="off" spellcheck="false" disabled>
-            <button id="send-button" disabled title="Send">➤</button>
         </div>
     </div>
 
@@ -192,18 +199,16 @@
             function showSuccessState() {
                 clearInterval(countdownInterval);
                 statusLightEl.className = 'status-light status-success';
-                connectingOverlay.style.opacity = '0';
                 
+                // Just hide the overlay
+                connectingOverlay.style.opacity = '0';
                 setTimeout(() => {
                     connectingOverlay.style.display = 'none';
-                    mainTerminal.style.display = 'flex';
-                    setTimeout(() => {
-                        mainTerminal.style.opacity = '1';
-                        inputBox.disabled = false;
-                        sendButton.disabled = false;
-                        inputBox.focus();
-                    }, 50);
-                }, 500);
+                    // Enable the inputs now that the terminal is visible
+                    inputBox.disabled = false;
+                    sendButton.disabled = false;
+                    inputBox.focus();
+                }, 500); // Match this to the CSS transition duration
             }
 
             socket.on('connect', startCountdown);
