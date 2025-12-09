@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexuss Terminal</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.5.0/css/xterm.css" />
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -58,67 +59,12 @@
 
         /* --- State 2: Main Terminal (Rebuilt) --- */
         #main-terminal {
-            display: flex;
-            flex-direction: column;
             width: 100%;
             height: 100%;
-            transition: opacity 0.5s ease-in-out;
         }
-        /* The Big Displayer */
-        #terminal-output-container {
-            flex: 1; /* CRITICAL: This makes the box expand to fill space */
-            padding: 10px;
-            overflow-y: auto;
-            background-color: #0d0d0d; /* Slightly darker than main bg */
-        }
-        #output-box {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-size: 0.9rem;
-        }
-        /* Style for user's echoed commands */
-        .command-echo {
-            color: var(--command-color);
-            font-weight: bold;
-        }
-        /* Special Keys Area */
-        #special-keys { display: flex; justify-content: center; gap: 5px; padding: 8px 10px; border-top: 1px solid var(--border-color); }
-        .key-btn { background-color: var(--button-bg); border: 1px solid var(--border-color); color: var(--text-color); padding: 8px 12px; border-radius: 4px; font-size: 0.9rem; cursor: pointer; min-width: 40px; text-align: center; }
-        .key-btn:active { background-color: var(--accent-blue); }
-        /* Telegram-style Input Area */
-        #input-area {
-            display: flex;
-            gap: 10px;
-            padding: 10px;
-            /*This border is now between the output and the input box*/
-            border-top: 1px solid var(--border-color);
-            background-color: var(--bg-color);
-        }
-        #input-box {
-            flex-grow: 1;
-            background-color: var(--button-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            padding: 10px 15px;
-            border-radius: 20px; /* Rounded for messenger look */
-            font-family: inherit;
-            font-size: 1rem;
-            outline: none;
-        }
-        #input-box:focus { border-color: var(--accent-blue); }
-        #send-button {
-            background-color: var(--accent-blue);
-            color: white;
-            border: none;
-            width: 40px; /* Circle shape */
-            height: 40px;
-            border-radius: 50%;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 1.2rem;
-            line-height: 40px; /* Center the icon */
-            text-align: center;
-            flex-shrink: 0;
+        #terminal-container {
+            width: 100%;
+            height: 100%;
         }
     </style>
 </head>
@@ -138,41 +84,42 @@
 
     <!-- State 2: Connected (Now visible by default, but under the overlay) -->
     <div id="main-terminal">
-        <div id="terminal-output-container">
-            <div id="output-box"></div>
-        </div>
-        <div id="input-area">
-            <input type="text" id="input-box" placeholder="Enter command..." autocomplete="off" spellcheck="false" disabled>
-            <button id="send-button" disabled title="Send">➤</button>
-        </div>
-        <div id="special-keys">
-            <button class="key-btn" data-key="CTRL">CTRL</button>
-            <button class="key-btn" data-key="ARROW_UP">↑</button>
-            <button class="key-btn" data-key="ARROW_DOWN">↓</button>
-            <button class="key-btn" data-key="ARROW_LEFT">←</button>
-            <button class="key-btn" data-key="ARROW_RIGHT">→</button>
-            <button class="key-btn" data-key="HOME">Home</button>
-            <button class="key-btn" data-key="END">End</button>
-        </div>
+        <div id="terminal-container"></div>
     </div>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.5.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.9.0/lib/xterm-addon-fit.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // --- UI Elements ---
+            const term = new Terminal({
+                cursorBlink: true,
+                theme: {
+                    background: '#1a1a1a',
+                    foreground: '#e0e0e0',
+                }
+            });
+            const fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+            term.open(document.getElementById('terminal-container'));
+            fitAddon.fit();
+
+            const namespace = '{{ socketio_namespace }}';
+            const socket = io(namespace);
+
+            term.onData(data => {
+                socket.emit('terminal_input', data);
+            });
+
+            socket.on('terminal_output', (data) => {
+                term.write(data);
+            });
+
+            // --- Status and Overlay Logic ---
             const connectingOverlay = document.getElementById('connecting-overlay');
-            const mainTerminal = document.getElementById('main-terminal');
             const countdownTimerEl = document.getElementById('countdown-timer');
             const statusLightEl = document.getElementById('status-light');
             const statusMessageEl = document.getElementById('status-message');
-            const outputBox = document.getElementById('output-box');
-            const outputContainer = document.getElementById('terminal-output-container');
-            const inputBox = document.getElementById('input-box');
-            const sendButton = document.getElementById('send-button');
-            const specialKeysContainer = document.getElementById('special-keys');
-            
-            const namespace = '{{ socketio_namespace }}';
-            const socket = io(namespace);
             let countdownInterval;
 
             function startCountdown() {
@@ -184,7 +131,7 @@
                     countdownTimerEl.textContent = `${minutes}:${seconds}`;
                     if (timeLeft <= 0) {
                         clearInterval(countdownInterval);
-                        showFailureState('Connection timed out. The service did not respond.');
+                        showFailureState('Connection timed out.');
                     }
                 }, 1000);
             }
@@ -193,79 +140,30 @@
                 clearInterval(countdownInterval);
                 statusLightEl.className = 'status-light status-failed';
                 statusMessageEl.textContent = message;
-                document.getElementById('embedded-site-container').style.display = 'none';
+                term.write(`\\x1b[31m${message}\\x1b[0m`);
             }
 
             function showSuccessState() {
                 clearInterval(countdownInterval);
-                statusLightEl.className = 'status-light status-success';
-                
-                // Just hide the overlay
                 connectingOverlay.style.opacity = '0';
                 setTimeout(() => {
                     connectingOverlay.style.display = 'none';
-                    // Enable the inputs now that the terminal is visible
-                    inputBox.disabled = false;
-                    sendButton.disabled = false;
-                    inputBox.focus();
-                }, 500); // Match this to the CSS transition duration
+                    term.focus();
+                    fitAddon.fit();
+                }, 500);
             }
 
             socket.on('connect', startCountdown);
-            socket.on('disconnect', () => showFailureState('Disconnected from server.'));
+            socket.on('disconnect', () => showFailureState('Disconnected.'));
             socket.on('terminal_error', (errorMsg) => showFailureState(`Error: ${errorMsg}`));
-            
             socket.on('status_update', (data) => {
                 statusMessageEl.textContent = data;
                 if (data.includes('successful')) {
                     showSuccessState();
                 }
             });
-
-            socket.on('terminal_output', (data) => {
-                const textNode = document.createTextNode(data);
-                outputBox.appendChild(textNode);
-                outputContainer.scrollTop = outputContainer.scrollHeight;
-            });
-            
-            // --- **COMMAND ECHOING FIX** ---
-            function sendInput() {
-                const command = inputBox.value;
-                if (!command) return;
-
-                // 1. Echo the command to the user's screen immediately
-                const echo = document.createElement('div');
-                echo.className = 'command-echo';
-                echo.textContent = `> ${command}`;
-                outputBox.appendChild(echo);
-                outputContainer.scrollTop = outputContainer.scrollHeight; // Scroll down
-
-                // 2. Send the command to the server
-                socket.emit('terminal_input', command + '\\r\\n');
-                
-                // 3. Clear the input box
-                inputBox.value = '';
-            }
-            sendButton.addEventListener('click', sendInput);
-            inputBox.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendInput(); });
-
-            let ctrlPressed = false;
-            const keyMap = { 'ARROW_UP': '\\x1b[A', 'ARROW_DOWN': '\\x1b[B', 'ARROW_RIGHT': '\\x1b[C', 'ARROW_LEFT': '\\x1b[D', 'HOME': '\\x1b[H', 'END': '\\x1b[F' };
-            specialKeysContainer.addEventListener('click', (event) => {
-                const target = event.target.closest('.key-btn');
-                if (!target) return;
-                const key = target.dataset.key;
-                if (key === 'CTRL') {
-                    ctrlPressed = !ctrlPressed;
-                    target.style.backgroundColor = ctrlPressed ? 'var(--accent-blue)' : 'var(--button-bg)';
-                } else if (keyMap[key]) {
-                    let sequence = keyMap[key];
-                    if (ctrlPressed) {
-                        sequence = keyMap[key].replace('[', '[1;5');
-                        ctrlPressed = false; document.querySelector('[data-key="CTRL"]').style.backgroundColor = 'var(--button-bg)';
-                    }
-                    socket.emit('terminal_input', sequence);
-                }
+             window.addEventListener('resize', () => {
+                fitAddon.fit();
             });
         });
     </script>
